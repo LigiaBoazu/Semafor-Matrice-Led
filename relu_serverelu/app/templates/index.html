@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>Send Message to Raspberry Pi</title>
+    <style>
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        #message-error {
+            color: red;
+            margin-top: 10px;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .btn-color {
+            width: 48%;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="col-md-4 text-center">
+            <h1 class="text-center mb-4">Vorbește cu Rică Raspberrică</h1>
+            <form id="message-form" action="/display" method="post" onsubmit="return validateMessage()">
+                <div class="form-group">
+                    <input type="text" id="message" name="message" class="form-control" placeholder="Scrie un mesaj de nota 10" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Trimite mesajul</button>
+                <div id="message-error"></div>
+            </form>
+            <h4 class="mt-4">Fă-ți damblaua la semafor</h4>
+            <div class="btn-group mt-2">
+                <button type="button" class="btn btn-success btn-color" onclick="setState('VERDE')">Verde</button>
+                <button type="button" class="btn btn-danger btn-color" onclick="setState('ROSU')">Roșu</button>
+            </div>
+            <div class="text-center mt-4">
+                <h4>Culoarea semaforului este: <span id="current-state">{{ state }}</span></h4>
+                <h4>Secunde rămase: <span id="remaining-time">{{ remaining_time }}</span></h4>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function validateMessage() {
+            var message = document.getElementById('message').value;
+            // Added !+=- to the allowed characters in the regex
+            if (/[^a-zA-Z0-9 !+=-]/g.test(message)) {
+                document.getElementById('message').value = ''; 
+                document.getElementById('message-error').textContent = 'Rică e mic și prost. Nu știe să opereze decât cu caractere alfanumerice și simbolurile !+=-.';
+                return false;
+            }
+            document.getElementById('message-error').textContent = ''; 
+            return true;
+        }
+
+        function setState(state) {
+            fetch('/set_state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'state': state
+                })
+            }).then(response => response.json())
+              .then(data => {
+                  document.getElementById('current-state').textContent = state;
+              })
+              .catch(error => console.error('Error:', error));
+        }
+
+        document.getElementById('message-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            fetch('/display', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            }).then(response => response.json())
+              .then(data => {
+                  console.log(data.message);
+              })
+              .catch(error => console.error('Error:', error));
+        });
+
+        function updateRemainingTime() {
+            fetch('/remaining_time')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('remaining-time').textContent = data.remaining_time;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        setInterval(updateRemainingTime, 1000);
+    </script>
+</body>
+</html>
